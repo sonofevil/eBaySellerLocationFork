@@ -8,19 +8,19 @@ GitHub repository: https://github.com/sonofevil/eBaySellerLocationFork
 Changes to the original script (v0.1):
 
 v1.0
--Optimized code.
--Various fixes.
--Updated selectors.
--Now works on search results internationally.
--Added delay to search results loop to prevent rate limiting.
+- Optimized code.
+- Various fixes.
+- Updated selectors.
+- Now works on search results internationally.
+- Added delay to search results loop to prevent rate limiting.
 
 v0.4
--I don't remember.
+- I don't remember.
 
 v0.3
--Script now also works on search results.
+- Script now also works on search results.
 
 v0.2
--Updated info box selector in line 34 to reflect changes to eBay site code.
--Updated item-id selector in line 24 to reflect changes to eBay site code.
--Changed url scope to hopefully cover all regional eBay domains.
+- Updated info box selector in line 34 to reflect changes to eBay site code.
+- Updated item-id selector in line 24 to reflect changes to eBay site code.
+- Changed url scope to hopefully cover all regional eBay domains.
