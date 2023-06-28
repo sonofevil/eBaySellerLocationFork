@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         eBay Seller Location Fork
 // @namespace    http://tampermonkey.net/
-// @version      0.3
-// @description  Displays the current and registration location of eBay sellers on search results and product pages.
+// @version      1.0
+// @description  Displays the registration location of eBay sellers on search results and product pages.
 // @author       sonofevil, master131
 // @match        https://www.ebay.*.*/sch/*
 // @match        https://www.ebay.*/sch/*
@@ -14,96 +14,87 @@
 // ==/UserScript==
 
 (function() {
-    'use strict';
-    function copyNodeStyle(sourceNode, targetNode) {
-        const computedStyle = window.getComputedStyle(sourceNode);
-        Array.from(computedStyle).forEach(key => targetNode.style.setProperty(key, computedStyle.getPropertyValue(key), computedStyle.getPropertyPriority(key)))
-    }
+  'use strict';
 
-  //Search results:
-
-  if (document.URL.includes("/sch/")) {
-
-    var usrs = document.querySelectorAll('span[class="s-item__seller-info-text"]');
-
-    usrs.forEach(function(usr) {
-      if (usr) {
-          var dat = "https://" + window.location.hostname + "/itm/sellerInfoV2?sid=" + usr.innerText.split(" ")[1] + "&itemId=" + window.location.pathname.split("/").pop();
-          GM_xmlhttpRequest({
-              method: 'GET',
-              url: dat,
-              headers: {
-                   'Accept': 'application/json, text/javascript, */*; q=0.01',
-                   'X-Requested-With': 'XMLHttpRequest',
-                   'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Mobile Safari/537.36'
-              },
-              onload: function(response) {
-                  var data = JSON.parse(JSON.parse(response.responseText));
-                  var si = usr; //document.querySelector(".s-item__seller-info");
-                  if (si) {
-                      var loc = document.createElement("div");
-                      //copyNodeStyle(si, loc);
-                      loc.innerText = 'Registration ' + data.registrationSite.replace("HongKong", "Hong Kong");
-                      si.insertAdjacentElement('afterend', loc);
-                  }
-              }
-          });
-          fetch(usr.href).then(function(e) {
-              return e.text();
-          }).then(function(e) {
-              var doc = new DOMParser().parseFromString(e, "text/html");
-              var si = document.querySelector(".ux-seller-section__content");
-              if (si) {
-                  var loc = document.createElement("div");
-                  //copyNodeStyle(si, loc);
-                  loc.innerText = 'Seller Location: ' + doc.querySelector('.mem_loc').innerText;
-                  si.insertAdjacentElement('afterend', loc);
-              }
-         });
-      }
-    });
+  //HTTP request headers
+  const reqhead = {
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Mobile Safari/537.36'
   }
 
-  //Item pages:
+  //Inserts location info element into page
+  function insertLocInfo(target, info) {
+    var data = JSON.parse(JSON.parse(info.responseText));
+    if (target) {
+      console.log("Inserting seller location...");
+      var loc = document.createElement("div");
+      loc.innerText = 'Registration ' + data.registrationSite.replace("HongKong", "Hong Kong");
+      target.insertAdjacentElement('afterend', loc);
+    }
+  }
 
-  if (document.URL.includes("/itm/") ) {
+  //Search results:
+  if (document.URL.includes("/sch/")) {
 
-    var usr = document.querySelector('a[href*="/usr/"]');
+    //Saves all seller info rows to array
+    var usrs = document.querySelectorAll('span[class="s-item__seller-info-text"]');
 
-    if (usr) {
-        var dat = "https://" + window.location.hostname + "/itm/sellerInfoV2?sid=" + usr.innerText + "&itemId=" + window.location.pathname.split("/").pop();
-        GM_xmlhttpRequest({
+    //Iterates through sellers
+    usrs.forEach(function(usr,i) {
+      //Inserts delay to avoid IP blocking for excessive requests
+      setTimeout(() => {
+        //Checks if element is empty
+        if (usr) {
+          //Constructs seller info URL
+          var dat = "https://" + window.location.hostname + "/itm/sellerInfoV2?sid=" + usr.innerText.split(" ")[0] + "&itemId=" + window.location.pathname.split("/").pop();
+          console.log("Seller info url:" + dat);
+          //Load info from URL
+          GM_xmlhttpRequest({
             method: 'GET',
             url: dat,
-            headers: {
-                 'Accept': 'application/json, text/javascript, */*; q=0.01',
-                 'X-Requested-With': 'XMLHttpRequest',
-                 'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Mobile Safari/537.36'
-            },
+            headers: reqhead,
             onload: function(response) {
-                var data = JSON.parse(JSON.parse(response.responseText));
-                var si = document.querySelector(".ux-seller-section__content");
-                if (si) {
-                    var loc = document.createElement("div");
-                    copyNodeStyle(si, loc);
-                    loc.innerText = 'Registration ' + data.registrationSite.replace("HongKong", "Hong Kong");
-                    si.insertAdjacentElement('afterend', loc);
-                }
+              insertLocInfo(usr,response);
             }
-        });
-        fetch(usr.href).then(function(e) {
-            return e.text();
-        }).then(function(e) {
-            var doc = new DOMParser().parseFromString(e, "text/html");
-            var si = document.querySelector(".ux-seller-section__content");
-            if (si) {
-                var loc = document.createElement("div");
-                copyNodeStyle(si, loc);
-                loc.innerText = 'Seller Location: ' + doc.querySelector('.mem_loc').innerText;
-                si.insertAdjacentElement('afterend', loc);
-            }
-       });
+          });
+        } //if (usr)
+      }, i * 500); //setTimeout
+    }); //usrs.forEach
+
+  //Item pages
+  } else if (document.URL.includes("/itm/") ) {
+
+    //Selects element with username
+    var usr = document.querySelector('a[href*="/usr/"] span');
+    if (!usr) {
+      var usr = document.querySelector('a[href*="/str/"] span');
     }
+
+    //Checks if element is empty
+    if (usr) {
+      //Constructs seller info URL
+      var dat = "https://" + window.location.hostname + "/itm/sellerInfoV2?sid=" + usr.innerText + "&itemId=" + window.location.pathname.split("/").pop();
+      //Load info from URL
+      GM_xmlhttpRequest({
+        method: 'GET',
+        url: dat,
+        headers: reqhead,
+        onload: function(response) {
+          //German eBay
+          var section = document.querySelector(".ux-seller-section__content");
+          if (section) {
+            insertLocInfo(section,response);
+          } else {
+            //ebay.com
+            var section_alt = document.querySelector(".x-sellercard-atf__info");
+            if (section_alt) {
+              insertLocInfo(section_alt,response);
+            }
+          }
+        } //onload: function(response)
+      }); //GM_xmlhttpRequest
+    } //if (usr)
   }
 
 })();
