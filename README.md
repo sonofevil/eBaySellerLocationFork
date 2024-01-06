@@ -1,4 +1,4 @@
-This is a patched fork of the abandoned "eBay Seller Location" script: 
+This is a patched fork of the abandoned "eBay Seller Location" script:
 https://greasyfork.org/en/scripts/410587-ebay-seller-location
 
 It displays the location of the eBay seller on eBay product pages (in the info box on the right) and on search results.
@@ -6,6 +6,14 @@ It displays the location of the eBay seller on eBay product pages (in the info b
 GitHub repository: https://github.com/sonofevil/eBaySellerLocationFork
 
 Changes to the original script (v0.1):
+
+v1.1
+- Completely reworked the code to load location info from html data after the old json API page was removed.
+- Search results loop is now completely asynchronous. No more simultaneous GET requests.
+- If present, seller location info is grabbed from item pages to avoid unnecessary requests.
+- Massive code cleanup.
+- Cures depression and removes pimples.
+- Todo: Add visible counter for search results processing.
 
 v1.0
 - Optimized code.
