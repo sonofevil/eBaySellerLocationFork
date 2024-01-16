@@ -7,6 +7,10 @@ GitHub repository: https://github.com/sonofevil/eBaySellerLocationFork
 
 Changes to the original script (v0.1):
 
+v1.2
+- Skips requests for already known sellers.
+- Visible counter in bottom right corner informs about script progress.
+
 v1.1
 - Completely reworked the code to load location info from html data after the old json API page was removed.
 - Search results loop is now completely asynchronous. No more simultaneous GET requests.
