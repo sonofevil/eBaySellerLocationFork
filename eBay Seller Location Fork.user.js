@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         eBay Seller Location Fork
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Displays the registration location of eBay sellers on search results and product pages.
 // @icon         https://raw.githubusercontent.com/sonofevil/eBaySellerLocationFork/main/ebaysellerlocationicon64.png
 // @author       sonofevil, master131
@@ -14,6 +14,8 @@
 // @grant        GM_xmlhttpRequest
 // @run-at       document-end
 // @noframes
+// @downloadURL https://update.greasyfork.org/scripts/444566/eBay%20Seller%20Location%20Fork.user.js
+// @updateURL https://update.greasyfork.org/scripts/444566/eBay%20Seller%20Location%20Fork.meta.js
 // ==/UserScript==
 
 (async function() {
@@ -33,11 +35,15 @@
     'Upgrade-Insecure-Requests': 1
   }
 
+  // Inline styling for counter
+  const counterStyle = "position: fixed; bottom: 10px; right: 10px; border-width: 1px; border-color: black; border-style: solid; padding: 5px; background-color: white"
+
   // DOM element selectors. First thing to debug when the script stops working.
   const selSrchRes = {
-    entry: 'div.s-item__info',
+    entry: 'ul.srp-results > li.s-item div.s-item__info',
     link: 'a.s-item__link',
-    info: 'span.s-item__seller-info'
+    info: 'span.s-item__seller-info',
+    name: 'span.s-item__seller-info-text'
   }
   const selItmPage = {
     loc: '[class$="nameAndAddress"] [class$="content"] [class$="item"]:last-child',
@@ -57,6 +63,21 @@
     }
   }
 
+  // Creates counter container and returns counter span
+  function createCounter() {
+      var container = document.createElement("div");
+      document.querySelector('html > body').insertAdjacentElement('afterend', container);
+      const title = document.createTextNode("Seller locations:");
+      container.appendChild(title);
+      const br = document.createElement("br");
+      container.appendChild(br);
+      const counter = document.createElement("span");
+      container.appendChild(counter);
+      container.setAttribute ("style", counterStyle);
+      return counter;
+  }
+
+  // Return document from URL (.URL attribute is wrong, but the DOM content is right)
   async function getUrlDocument(url) {
     return await fetch(url, { headers: reqhead })
       .then(response => response.text())
@@ -66,10 +87,11 @@
         return redoc;
     })
       .catch(error => {
-      console.log('Error: Failure to fetch page.');
+      throw new Error("Error: Failure to fetch page.");
     });
   }
 
+  // Return location string for item doc
   async function getDocLoc(itemDoc) {
     if (await itemDoc !== undefined) {
       // Seek location on /itm/ page
@@ -91,22 +113,19 @@
           if (await infoDoc !== null) {
             return await infoDoc.querySelector(selSlrPage_loc).innerText;
           } else {
-            console.log("Failure in loading page...")
-            return " ";
+            throw new Error("Failure in loading page.");
           }
         } else {
-          console.log("Couldn't find location.");
-          return " ";
+          throw new Error("Couldn't find location.")
         }
       }
     } else {
-      console.log("Couldn't find location.");
-      return " ";
+      throw new Error("Couldn't find location.")
     }
   }
 
+  // Get doc from /itm/ URL
   async function getUrlLoc(itmUrl) {
-    // Get doc from /itm/ URL
     var doc = await getUrlDocument(itmUrl);
     return getDocLoc(doc);
   }
@@ -114,13 +133,37 @@
   async function searchResults () {
     //Saves all item links to array
     const srcResults = await document.querySelectorAll(selSrchRes.entry);
-    for (const result of srcResults) {
+    const resNum = await srcResults.length;
+    const nameList = [];
+    const locaList = [];
+    var counter = createCounter();
+    var errCount = 0;
+    counter.innerText = "0/" + resNum  + "(Err: 0)";
+    var i = 0;
+    for (const [index, result] of srcResults.entries()) {
       if (result) {
-        var itemLink = result.querySelector(selSrchRes.link);
-        var sellInfo = result.querySelector(selSrchRes.info)
-        console.log("Checking search result for seller location: " + itemLink.href)
-        var itmDoc = await getUrlDocument(itemLink.href);
-        await insertLocInfo(sellInfo, await getDocLoc(itmDoc));
+        try{
+          let name = result.querySelector(selSrchRes.name).innerText.split(" ")[0];
+          let nameIndex = nameList.indexOf(name);
+          let sellInfo = result.querySelector(selSrchRes.info);
+          if ( nameIndex <= 0 ) {
+            nameList[i] = name;
+            let itemLink = result.querySelector(selSrchRes.link);
+            console.log("Checking search result for seller location: " + itemLink.href)
+            let itmDoc = await getUrlDocument(itemLink.href);
+            locaList[i] = await getDocLoc(itmDoc);
+            console.log("Inserting location " + locaList[i])
+            await insertLocInfo(sellInfo, locaList[i]);
+            i++;
+          } else {
+            console.log("Item's seller " + name + " already known. Inserting location " + locaList[nameIndex]);
+            await insertLocInfo(sellInfo, locaList[nameIndex]);
+          }
+        } catch(e) {
+          console.log(e);
+          errCount++;
+        }
+        counter.innerText = ( index + 1 ) + "/" + resNum + " (Err: " + errCount + ")";
       }
     }
   }
