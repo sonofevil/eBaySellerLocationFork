@@ -3,7 +3,7 @@ https://greasyfork.org/en/scripts/410587-ebay-seller-location
 
 It displays the location of the eBay seller on eBay product pages (in the info box on the right) and on search results.
 
-There is a high likelihood that occasionally the script will fail because the eBay server gets suspicious about too many http requests. The script tries to check location info one seller at a time to avoid this which makes it slow, and sometimes you may have to manually open eBay in a new tab and solve a captcha to get it to work again. Since there is no longer any unprotected eBay API, this natural side-effect of webscraping is unavoidable.
+There is a high likelihood that occasionally the script will fail because the eBay server gets suspicious about too many http requests. The script tries to check location info one seller at a time to avoid this which makes it slow, and sometimes you may have to manually open eBay in a new tab and solve a captcha to get it to work again. Since there is no longer any unprotected eBay API, this natural side-effect of webcrawling is unavoidable.
 
 GitHub repository: https://github.com/sonofevil/eBaySellerLocationFork
 
