@@ -7,7 +7,7 @@ GitHub repository: https://github.com/sonofevil/eBaySellerLocationFork
 
 Changes to the original script (v0.1):
 
-v1.24
+v1.2.4
 - Fixed several common errors when getting location info.
 
 v1.2.3
