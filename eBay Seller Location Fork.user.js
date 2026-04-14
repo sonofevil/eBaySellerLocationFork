@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         eBay Seller Location Fork
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.2.4
 // @description  Displays the registration location of eBay sellers on search results and product pages.
 // @icon         https://raw.githubusercontent.com/sonofevil/eBaySellerLocationFork/main/ebaysellerlocationicon64.png
 // @author       sonofevil, master131
@@ -12,7 +12,7 @@
 // @match        https://www.ebay.*/itm/*
 // @require      http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js
 // @grant        GM_xmlhttpRequest
-// @run-at       document-end
+// @run-at       document-idle
 // @noframes
 // @downloadURL https://update.greasyfork.org/scripts/444566/eBay%20Seller%20Location%20Fork.user.js
 // @updateURL https://update.greasyfork.org/scripts/444566/eBay%20Seller%20Location%20Fork.meta.js
@@ -40,15 +40,16 @@
 
   // DOM element selectors. First thing to debug when the script stops working.
   const selSrchRes = {
-    entry: 'ul.srp-results > li.s-item div.s-item__info',
-    link: 'a.s-item__link',
-    info: 'span.s-item__seller-info',
-    name: 'span.s-item__seller-info-text'
+    entry: 'ul.srp-results > li.s-item div.s-item__info, ul.srp-results > li.s-card .su-card-container__content',
+    link: '[class$="header"] a',
+    info: 'span.s-item__seller-info, span.s-item__etrs, .su-card-container__attributes__secondary > div:has(> span)',
+    name: 'span.s-item__seller-info-text, span.s-item__etrs-text, .su-card-container__attributes__secondary > .s-card__attribute-row > span.su-styled-text.primary:first-child'
   }
   const selItmPage = {
     loc: '[class$="nameAndAddress"] [class$="content"] [class$="item"]:last-child',
-    usrlnk: '.d-stores-info-categories__container__info__section__title a.ux-action[href]',
+    usrlnk: ':is([href*="/usr/"], [href*="/str/"])',
     info: 'div.ux-seller-section, div.x-sellercard-atf__info',
+    name: '.x-sellercard-atf__info__about-seller span'
   }
   const selSlrPage_loc = 'section.str-about-description__seller-info > span:first-of-type > span.str-text-span.BOLD';
 
@@ -58,6 +59,7 @@
     if (target) {
       console.log("Inserting seller location...");
       var loc = document.createElement("div");
+      loc.classList.add("userscript-insert", "seller-location", "location-" + location);
       loc.innerText = 'Location: ' + location.replace("HongKong", "Hong Kong");
       target.insertAdjacentElement('afterend', loc);
     }
@@ -104,17 +106,23 @@
         console.log("Location not found on item page, checking seller info page...")
         // Get seller's user link
         var slrLnk = await itemDoc.querySelector(selItmPage.usrlnk);
-        if (await slrLnk !== null) {
-          console.log("Seller info URL: " + slrLnk.href + '&_tab=1')
-          // Get doc from user info URL
-          var infoDoc = await getUrlDocument(slrLnk.href + '&_tab=1');
-          console.log(infoDoc);
-          // Return location string
-          if (await infoDoc !== null) {
-            return await infoDoc.querySelector(selSlrPage_loc).innerText;
-          } else {
-            throw new Error("Failure in loading page.");
-          }
+        // Construct /usr/ url if link not found, hoping it's not a /str/ url
+        if (await slrLnk == null) {
+          var slrName = itemDoc.querySelector(selItmPage.name).innerText.split(" ")[0];
+          var slrUrl = new URL("https://" + document.domain + "/usr/" + slrName);
+        } else {
+          // Drop existing params
+          var slrUrl = new URL(slrLnk.href.split("?")[0]);
+        }
+        // Append param
+        slrUrl.searchParams.append("tab", "about");
+        console.log("Seller info URL: " + slrUrl.href)
+        // Get doc from user info URL
+        var infoDoc = await getUrlDocument(slrUrl.href + '&_tab=about');
+        console.log(infoDoc);
+        // Return location string
+        if (await infoDoc !== null) {
+          return await infoDoc.querySelector(selSlrPage_loc).innerText;
         } else {
           throw new Error("Couldn't find location.")
         }
